@@ -219,6 +219,7 @@
   .errors { margin-bottom: 18px; padding: 14px 18px; border-radius: 12px; background: var(--critical-bg); color: var(--critical); font-size: 0.83rem; border: 1px solid color-mix(in srgb, var(--critical) 30%, transparent); }
   .errors ul { margin: 6px 0 0; padding-left: 18px; }
   .errors li { margin: 2px 0; }
+  .errors a { color: inherit; font-weight: 700; text-decoration: underline; }
 
   table { width: 100%; border-collapse: collapse; font-size: 0.84rem; background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
   table th, table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--gridline); }
@@ -404,11 +405,16 @@
       </table>`;
   }
 
+  function linkifyJiraKeys(text) {
+    return text.replace(/\bIS-\d+\b/g, key =>
+      `<a href="https://mercadolibre.atlassian.net/browse/${key}" target="_blank" rel="noopener">${key}</a>`);
+  }
+
   function renderErrors() {
     const box = document.getElementById("errorsBox");
     if (!data.erros || !data.erros.length) { box.style.display = "none"; return; }
     box.style.display = "block";
-    box.innerHTML = "<b>Falhas na última checagem:</b><ul>" + data.erros.map(e => `<li>${e}</li>`).join("") + "</ul>";
+    box.innerHTML = "<b>Falhas na última checagem:</b><ul>" + data.erros.map(e => `<li>${linkifyJiraKeys(e)}</li>`).join("") + "</ul>";
   }
 
   function renderAll() {
