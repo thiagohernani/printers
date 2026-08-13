@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import re
 import sys
 from datetime import datetime
 
@@ -36,8 +37,33 @@ def field(row, key):
     return (row.get(key) or "").strip()
 
 
+def _ticket_digits(numero):
+    return re.sub(r"\D", "", str(numero or ""))
+
+
+def load_resolved_cache():
+    """Tickets ja confirmados como resolvidos na ultima checagem - nao precisam
+    ser consultados de novo, ja que dificilmente um chamado reabre."""
+    if not os.path.exists(DATA_JS_PATH):
+        return {}
+    try:
+        with open(DATA_JS_PATH, encoding="utf-8") as f:
+            content = f.read()
+        json_part = content[len("const TICKETS_DATA = "):].strip().rstrip(";")
+        payload = json.loads(json_part)
+    except Exception:
+        return {}
+    cache = {}
+    for t in payload.get("tickets", []):
+        if t.get("cor") == "verde":
+            key = (str(t.get("fornecedor", "")).lower(), _ticket_digits(t.get("numero_ticket")))
+            cache[key] = t
+    return cache
+
+
 def build_payload():
     errors = []
+    resolved_cache = load_resolved_cache()
 
     try:
         jira_rows, jira_warnings = jira_client.fetch_tracked_tickets(config.JIRA_URL, config.JIRA_EMAIL, config.JIRA_TOKEN)
@@ -69,10 +95,38 @@ def build_payload():
             f"use exatamente 'Selbetti' ou 'Simpress' no tickets.csv"
         )
 
-    if selbetti_rows:
+    def cached_result(r, fornecedor_key):
+        cache_key = (fornecedor_key, _ticket_digits(field(r, "numero_ticket")))
+        cached = resolved_cache.get(cache_key)
+        if not cached:
+            return None
+        info = dict(cached)
+        info["chamado_interno"] = field(r, "chamado_interno")
+        info["motivo"] = field(r, "motivo") or info.get("motivo", "")
+        return info
+
+    selbetti_to_check = []
+    for r in selbetti_rows:
+        cached = cached_result(r, "selbetti")
+        if cached:
+            results.append(cached)
+        else:
+            selbetti_to_check.append(r)
+
+    simpress_to_check = []
+    for r in simpress_rows:
+        cached = cached_result(r, "simpress")
+        if cached:
+            results.append(cached)
+        else:
+            simpress_to_check.append(r)
+
+    reused_from_cache = len(results)
+
+    if selbetti_to_check:
         try:
             token = selbetti_client.login(config.SELBETTI_USER, config.SELBETTI_PASS)
-            for r in selbetti_rows:
+            for r in selbetti_to_check:
                 try:
                     info = selbetti_client.get_ticket_status(token, field(r, "numero_ticket"))
                     info["chamado_interno"] = field(r, "chamado_interno")
@@ -84,10 +138,10 @@ def build_payload():
         except Exception as e:
             errors.append(f"Login Selbetti falhou: {e}")
 
-    if simpress_rows:
+    if simpress_to_check:
         try:
             with SimpressSession(config.SIMPRESS_USER, config.SIMPRESS_PASS) as session:
-                for r in simpress_rows:
+                for r in simpress_to_check:
                     try:
                         info = session.get_ticket_status(field(r, "numero_ticket"))
                         info["chamado_interno"] = field(r, "chamado_interno")
@@ -103,6 +157,7 @@ def build_payload():
         "atualizado_em": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "tickets": results,
         "erros": errors,
+        "reaproveitados_do_cache": reused_from_cache,
     }
 
 
@@ -116,7 +171,12 @@ def write_data_js(payload):
 def main():
     payload = build_payload()
     write_data_js(payload)
-    print(f"{len(payload['tickets'])} ticket(s) atualizados, {len(payload['erros'])} erro(s).")
+    checados = len(payload["tickets"]) - payload["reaproveitados_do_cache"]
+    print(
+        f"{len(payload['tickets'])} ticket(s) no total - {checados} consultado(s) agora, "
+        f"{payload['reaproveitados_do_cache']} ja resolvido(s) reaproveitado(s) do cache. "
+        f"{len(payload['erros'])} erro(s)."
+    )
     for e in payload["erros"]:
         print("  ERRO:", e)
 

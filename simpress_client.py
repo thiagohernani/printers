@@ -10,8 +10,24 @@ APP_TOKEN = "6768b72b-5e89-4f24-84a2-89cfca2cead0"
 
 
 class SimpressSession:
-    def __init__(self, user, password):
+    def __init__(self, user, password, attempts=2):
         self._pw = sync_playwright().start()
+        self._browser = None
+        self.page = None
+        last_error = None
+        for _ in range(attempts):
+            try:
+                self._login(user, password)
+                return
+            except Exception as e:
+                last_error = e
+                if self._browser:
+                    self._browser.close()
+                    self._browser = None
+        self._pw.stop()
+        raise RuntimeError(f"Login na Simpress falhou: {last_error}")
+
+    def _login(self, user, password):
         self._browser = self._pw.chromium.launch(headless=True)
         self.page = self._browser.new_page(viewport={"width": 1400, "height": 900})
         self.page.goto(LOGIN_URL, wait_until="networkidle", timeout=30000)
@@ -19,9 +35,9 @@ class SimpressSession:
         self.page.locator("#inputEmail input").fill(user)
         self.page.locator("#inputSenha input").fill(password)
         self.page.locator("#inputSenha input").press("Enter")
-        self.page.wait_for_timeout(4000)
+        self.page.wait_for_timeout(6000)
         if "login" in self.page.url:
-            raise RuntimeError("Login na Simpress falhou - verifique usuario/senha")
+            raise RuntimeError("credenciais invalidas ou portal lento demais para responder")
 
     def close(self):
         self._browser.close()
