@@ -18,7 +18,11 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
    tiver só o número da OS sem dizer o fornecedor, o ticket é ignorado e
    aparece como aviso no dashboard, pedindo pra corrigir o título no Jira.
 3. Para cada ticket encontrado, consulta a API do fornecedor correspondente
-   e pega o status atual.
+   e pega o status atual - exceto os que já apareceram como **resolvidos**
+   numa checagem anterior, que não são consultados de novo (ficam salvos em
+   `data.js` e são só reaproveitados, já que dificilmente um chamado
+   reabre). Isso deixa as atualizações bem mais rápidas conforme a lista
+   cresce.
 4. Gera `data.js`, que alimenta o `dashboard.html` — cartões coloridos por
    situação (verde = resolvido, amarelo = em andamento, vermelho = atrasado),
    com busca, filtros e link direto pro chamado no Jira.
