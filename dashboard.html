@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chamados - Impressoras</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:        #f5f5f3;
+    --surface:     #ffffff;
+    --surface-2:   #fcfcfb;
+    --text-1:      #0b0b0b;
+    --text-2:      #52514e;
+    --text-muted:  #898781;
+    --gridline:    #e1e0d9;
+    --border:      rgba(11,11,11,0.09);
+    --shadow:      0 1px 2px rgba(11,11,11,0.04), 0 1px 1px rgba(11,11,11,0.03);
+    --shadow-hover: 0 8px 20px rgba(11,11,11,0.08), 0 2px 6px rgba(11,11,11,0.05);
+    --good:        #0ca30c;
+    --warning:     #b9790a;
+    --warning-ic:  #fab219;
+    --critical:    #d03b3b;
+    --good-bg:     #e6f6e6;
+    --warning-bg:  #fff2d6;
+    --critical-bg: #fbe7e7;
+    --muted-bg:    #eeede9;
+    --accent:      #2a78d6;
+    --accent-bg:   #e8f1fc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:        #0b0b0b;
+      --surface:     #1a1a19;
+      --surface-2:   #1f1f1e;
+      --text-1:      #ffffff;
+      --text-2:      #c3c2b7;
+      --text-muted:  #8f8d86;
+      --gridline:    #2c2c2a;
+      --border:      rgba(255,255,255,0.09);
+      --shadow:      0 1px 2px rgba(0,0,0,0.3);
+      --shadow-hover: 0 10px 24px rgba(0,0,0,0.45);
+      --good:        #2fc02f;
+      --warning:     #f0b53d;
+      --warning-ic:  #f0b53d;
+      --critical:    #f0716f;
+      --good-bg:     #123312;
+      --warning-bg:  #3a2c08;
+      --critical-bg: #3a1414;
+      --muted-bg:    #232320;
+      --accent:      #3987e5;
+      --accent-bg:   #142338;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:        #0b0b0b;
+    --surface:     #1a1a19;
+    --surface-2:   #1f1f1e;
+    --text-1:      #ffffff;
+    --text-2:      #c3c2b7;
+    --text-muted:  #8f8d86;
+    --gridline:    #2c2c2a;
+    --border:      rgba(255,255,255,0.09);
+    --shadow:      0 1px 2px rgba(0,0,0,0.3);
+    --shadow-hover: 0 10px 24px rgba(0,0,0,0.45);
+    --good:        #2fc02f;
+    --warning:     #f0b53d;
+    --warning-ic:  #f0b53d;
+    --critical:    #f0716f;
+    --good-bg:     #123312;
+    --warning-bg:  #3a2c08;
+    --critical-bg: #3a1414;
+    --muted-bg:    #232320;
+    --accent:      #3987e5;
+    --accent-bg:   #142338;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-1);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 24px 72px; }
+
+  /* header */
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    flex-wrap: wrap;
+    padding: 18px 24px;
+    margin: -28px -24px 28px;
+    background: color-mix(in srgb, var(--page) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 9px; flex: none;
+    background: linear-gradient(135deg, var(--accent), #1c5cab);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; font-weight: 700;
+  }
+  h1 { font-size: 1.25rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  .updated { color: var(--text-muted); font-size: 0.78rem; margin-top: 1px; }
+
+  .topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .refresh-btn {
+    font: inherit; font-size: 0.85rem; font-weight: 600; padding: 9px 18px; border-radius: 9px;
+    border: none; background: var(--accent); color: #fff; cursor: pointer;
+    box-shadow: var(--shadow); transition: transform 0.08s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  }
+  .refresh-btn:hover:not(:disabled) { box-shadow: var(--shadow-hover); }
+  .refresh-btn:active:not(:disabled) { transform: translateY(1px); }
+  .refresh-btn:disabled { opacity: 0.55; cursor: default; }
+  .refresh-msg { font-size: 0.78rem; color: var(--text-muted); }
+  .refresh-msg.erro { color: var(--critical); font-weight: 600; }
+
+  /* stat tiles */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .stat-tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .stat-tile::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--tile-accent, var(--gridline));
+  }
+  .stat-tile .value { font-size: 1.9rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1; }
+  .stat-tile .label { color: var(--text-2); font-size: 0.8rem; margin-top: 4px; font-weight: 500; }
+  .stat-tile.total     { --tile-accent: var(--accent); }
+  .stat-tile.verde     { --tile-accent: var(--good); }
+  .stat-tile.amarelo   { --tile-accent: var(--warning-ic); }
+  .stat-tile.vermelho  { --tile-accent: var(--critical); }
+
+  /* controls row */
+  .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .search-wrap { position: relative; flex: 1 1 240px; max-width: 320px; }
+  .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none; }
+  .search-input {
+    width: 100%; font: inherit; font-size: 0.85rem; padding: 9px 12px 9px 34px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-1);
+  }
+  .search-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filters button {
+    font: inherit; font-size: 0.82rem; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+    cursor: pointer; transition: all 0.12s ease; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .filters button:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+  .filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .filters button .count { opacity: 0.75; font-weight: 500; }
+
+  .view-toggle {
+    margin-left: auto; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent);
+    background: none; border: none; cursor: pointer; padding: 7px 4px; display: flex; align-items: center; gap: 4px;
+  }
+  .view-toggle:hover { text-decoration: underline; }
+
+  /* cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--card-accent, var(--gridline));
+    border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+    box-shadow: var(--shadow); transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .card:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+  .card.verde     { --card-accent: var(--good); }
+  .card.amarelo   { --card-accent: var(--warning-ic); }
+  .card.vermelho  { --card-accent: var(--critical); }
+  .card.cinza     { --card-accent: var(--text-muted); }
+
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .fornecedor-row { display: flex; align-items: center; gap: 6px; }
+  .fornecedor-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex: none; }
+  .fornecedor { color: var(--text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .fornecedor.selbetti, .fornecedor-dot.selbetti { color: var(--good); }
+  .fornecedor-dot.selbetti { background: var(--good); }
+  .fornecedor.simpress, .fornecedor-dot.simpress { color: var(--accent); }
+  .fornecedor-dot.simpress { background: var(--accent); }
+  .ticket-no { font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; margin-top: 2px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.76rem; font-weight: 700; padding: 4px 10px 4px 8px; border-radius: 999px; white-space: nowrap; flex: none; }
+  .badge.verde     { background: var(--good-bg);     color: var(--good); }
+  .badge.amarelo   { background: var(--warning-bg);  color: var(--warning); }
+  .badge.vermelho  { background: var(--critical-bg); color: var(--critical); }
+  .badge.cinza     { background: var(--muted-bg);     color: var(--text-muted); }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+
+  .motivo { font-size: 0.88rem; color: var(--text-1); font-weight: 500; line-height: 1.35; }
+
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 10px 0; border-top: 1px solid var(--gridline); }
+  .meta-item { min-width: 0; }
+  .meta-item .k { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .meta-item .v { font-size: 0.82rem; color: var(--text-1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta-item.span2 { grid-column: 1 / -1; }
+
+  .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .chamado-interno { font-size: 0.78rem; color: var(--text-muted); }
+  .chamado-interno a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .chamado-interno a:hover { text-decoration: underline; }
+  .days-pill {
+    font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: var(--muted-bg); color: var(--text-2); white-space: nowrap;
+  }
+  .days-pill.vermelho { background: var(--critical-bg); color: var(--critical); }
+
+  .empty { text-align: center; color: var(--text-muted); padding: 70px 20px; font-size: 0.9rem; background: var(--surface); border: 1px dashed var(--border); border-radius: 14px; }
+  .empty code { background: var(--muted-bg); padding: 2px 6px; border-radius: 5px; font-size: 0.85em; }
+
+  .errors { margin-top: 22px; padding: 14px 18px; border-radius: 12px; background: var(--critical-bg); color: var(--critical); font-size: 0.83rem; border: 1px solid color-mix(in srgb, var(--critical) 30%, transparent); }
+  .errors ul { margin: 6px 0 0; padding-left: 18px; }
+  .errors li { margin: 2px 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  table th, table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--gridline); }
+  table th { color: var(--text-muted); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; background: var(--surface-2); }
+  table tbody tr:hover { background: var(--surface-2); }
+  table tbody tr:last-child td { border-bottom: none; }
+  #tableView { border-radius: 12px; }
+
+  ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">P</div>
+      <div>
+        <h1>Chamados de impressoras</h1>
+        <div class="updated" id="updated"></div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="refresh-msg" id="refreshMsg"></span>
+      <button class="refresh-btn" id="refreshBtn">Atualizar agora</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Buscar por ticket, SN, motivo, chamado...">
+    </div>
+    <div class="filters" id="filters"></div>
+    <button class="view-toggle" id="toggleView">Ver como tabela</button>
+  </div>
+
+  <div id="cardsView" class="grid"></div>
+  <div id="tableView" style="display:none; overflow-x:auto;"></div>
+  <div class="empty" id="emptyState" style="display:none;">Nenhum ticket encontrado. Edite <code>tickets.csv</code> ou ajuste a busca/filtro.</div>
+  <div class="errors" id="errorsBox" style="display:none;"></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+  const STATUS_META = {
+    verde:    { label: "Resolvido",     order: 3 },
+    amarelo:  { label: "Em andamento",  order: 1 },
+    vermelho: { label: "Atrasado",      order: 0 },
+    cinza:    { label: "Desconhecido",  order: 2 },
+  };
+
+  let data = (typeof TICKETS_DATA !== "undefined") ? TICKETS_DATA : { atualizado_em: "-", tickets: [], erros: [] };
+  let currentFilter = "todos";
+  let searchTerm = "";
+
+  function fmtDate(iso) {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString("pt-BR");
+  }
+
+  function daysOpen(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d)) return null;
+    return Math.floor((Date.now() - d.getTime()) / 86400000);
+  }
+
+  function sortedTickets(list) {
+    return [...list].sort((a, b) => {
+      const oa = (STATUS_META[a.cor] || STATUS_META.cinza).order;
+      const ob = (STATUS_META[b.cor] || STATUS_META.cinza).order;
+      if (oa !== ob) return oa - ob;
+      const da = daysOpen(a.abertura) ?? -1;
+      const db = daysOpen(b.abertura) ?? -1;
+      return db - da;
+    });
+  }
+
+  function renderStats() {
+    const counts = { verde: 0, amarelo: 0, vermelho: 0, cinza: 0 };
+    data.tickets.forEach(t => counts[t.cor] = (counts[t.cor] || 0) + 1);
+    const tiles = [
+      { key: "total", label: "Total", value: data.tickets.length },
+      { key: "verde", label: "Resolvidos", value: counts.verde },
+      { key: "amarelo", label: "Em andamento", value: counts.amarelo },
+      { key: "vermelho", label: "Atrasados", value: counts.vermelho },
+    ];
+    document.getElementById("stats").innerHTML = tiles.map(t =>
+      `<div class="stat-tile ${t.key}"><div class="value">${t.value}</div><div class="label">${t.label}</div></div>`
+    ).join("");
+  }
+
+  function renderFilters() {
+    const counts = { todos: data.tickets.length, verde: 0, amarelo: 0, vermelho: 0 };
+    data.tickets.forEach(t => { if (counts[t.cor] !== undefined) counts[t.cor]++; });
+    const opts = [
+      { key: "todos", label: "Todos" },
+      { key: "vermelho", label: "Atrasados" },
+      { key: "amarelo", label: "Em andamento" },
+      { key: "verde", label: "Resolvidos" },
+    ];
+    const el = document.getElementById("filters");
+    el.innerHTML = opts.map(o =>
+      `<button data-filter="${o.key}" aria-pressed="${o.key === currentFilter}">${o.label} <span class="count">${counts[o.key]}</span></button>`
+    ).join("");
+    el.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentFilter = btn.dataset.filter;
+        renderAll();
+      });
+    });
+  }
+
+  function filteredTickets() {
+    let list = currentFilter === "todos" ? data.tickets : data.tickets.filter(t => t.cor === currentFilter);
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter(t => [t.numero_ticket, t.sn, t.motivo, t.descricao, t.chamado_interno, t.status]
+        .some(v => v && String(v).toLowerCase().includes(q)));
+    }
+    return sortedTickets(list);
+  }
+
+  function renderCards() {
+    const list = filteredTickets();
+    const grid = document.getElementById("cardsView");
+    document.getElementById("emptyState").style.display = list.length ? "none" : "block";
+    grid.innerHTML = list.map(t => {
+      const meta = STATUS_META[t.cor] || STATUS_META.cinza;
+      const days = daysOpen(t.abertura);
+      const interno = t.chamado_interno
+        ? (/^IS-\d+$/.test(t.chamado_interno)
+            ? `<a href="https://mercadolibre.atlassian.net/browse/${t.chamado_interno}" target="_blank" rel="noopener">${t.chamado_interno}</a>`
+            : t.chamado_interno)
+        : "-";
+      const fCls = (t.fornecedor || "").toLowerCase();
+      return `
+        <div class="card ${t.cor}">
+          <div class="card-top">
+            <div>
+              <div class="fornecedor-row"><span class="fornecedor-dot ${fCls}"></span><span class="fornecedor ${fCls}">${t.fornecedor}</span></div>
+              <div class="ticket-no">#${t.numero_ticket}</div>
+            </div>
+            <span class="badge ${t.cor}"><span class="dot"></span>${meta.label}</span>
+          </div>
+          <div class="motivo">${t.motivo || t.descricao || "Sem descrição"}</div>
+          <div class="meta-grid">
+            <div class="meta-item span2"><div class="k">Status do fornecedor</div><div class="v">${t.status}</div></div>
+            ${t.sn ? `<div class="meta-item"><div class="k">Nº de série</div><div class="v">${t.sn}</div></div>` : ""}
+            <div class="meta-item"><div class="k">Aberto em</div><div class="v">${fmtDate(t.abertura)}</div></div>
+          </div>
+          <div class="card-footer">
+            <span class="chamado-interno">${interno}</span>
+            ${days !== null ? `<span class="days-pill ${t.cor === "vermelho" ? "vermelho" : ""}">${days} dia${days === 1 ? "" : "s"}</span>` : ""}
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  function renderTable() {
+    const list = filteredTickets();
+    const rows = list.map(t => {
+      const meta = STATUS_META[t.cor] || STATUS_META.cinza;
+      return `<tr>
+        <td class="fornecedor ${(t.fornecedor || "").toLowerCase()}" style="font-weight:700; text-transform:none; letter-spacing:normal;">${t.fornecedor}</td>
+        <td>${t.numero_ticket}</td>
+        <td><span class="badge ${t.cor}"><span class="dot"></span>${meta.label}</span></td>
+        <td>${t.status}</td>
+        <td>${t.sn || "-"}</td>
+        <td>${fmtDate(t.abertura)}</td>
+        <td>${t.chamado_interno || "-"}</td>
+      </tr>`;
+    }).join("");
+    document.getElementById("tableView").innerHTML = `
+      <table>
+        <thead><tr><th>Fornecedor</th><th>Ticket</th><th>Situação</th><th>Status original</th><th>SN</th><th>Aberto em</th><th>Chamado interno</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function renderErrors() {
+    const box = document.getElementById("errorsBox");
+    if (!data.erros || !data.erros.length) { box.style.display = "none"; return; }
+    box.style.display = "block";
+    box.innerHTML = "<b>Falhas na última checagem:</b><ul>" + data.erros.map(e => `<li>${e}</li>`).join("") + "</ul>";
+  }
+
+  function renderAll() {
+    document.getElementById("updated").textContent = "Atualizado em " + data.atualizado_em;
+    renderStats();
+    renderFilters();
+    renderCards();
+    renderTable();
+    renderErrors();
+  }
+
+  let showingTable = false;
+  document.getElementById("toggleView").addEventListener("click", () => {
+    showingTable = !showingTable;
+    document.getElementById("cardsView").style.display = showingTable ? "none" : "grid";
+    document.getElementById("tableView").style.display = showingTable ? "block" : "none";
+    document.getElementById("toggleView").textContent = showingTable ? "Ver como cartões" : "Ver como tabela";
+  });
+
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    searchTerm = e.target.value.trim();
+    renderCards();
+    renderTable();
+  });
+
+  const refreshBtn = document.getElementById("refreshBtn");
+  const refreshMsg = document.getElementById("refreshMsg");
+  refreshBtn.addEventListener("click", async () => {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = "Atualizando...";
+    refreshMsg.textContent = "";
+    refreshMsg.classList.remove("erro");
+    try {
+      const resp = await fetch("/atualizar", { method: "POST" });
+      if (!resp.ok) throw new Error("resposta " + resp.status);
+      data = await resp.json();
+      renderAll();
+      refreshMsg.textContent = data.erros && data.erros.length ? "Atualizado com falhas - veja abaixo." : "Atualizado.";
+    } catch (e) {
+      refreshMsg.textContent = "Não consegui falar com o servidor local (server.py está rodando?).";
+      refreshMsg.classList.add("erro");
+    } finally {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = "Atualizar agora";
+    }
+  });
+
+  renderAll();
+</script>
+</body>
+</html>
