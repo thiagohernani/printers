@@ -82,22 +82,54 @@ python server.py
 E acesse **http://127.0.0.1:8743/** no navegador (em vez de abrir o
 arquivo direto).
 
-## Automação (opcional)
+## Automação (opcional, mas recomendado)
 
-Duas coisas podem ser agendadas pra rodar sozinhas:
+Isso configura duas coisas: a checagem diária (08:00) e o servidor do
+dashboard iniciando sozinho a cada login no Windows, com fallback automático
+caso a política de grupo da empresa bloqueie tarefas `ONLOGON` (foi o nosso
+caso). **Não salve isso como um arquivo `.ps1`** - em máquinas corporativas
+com política de restrição de software, arquivos de script ficam bloqueados
+mesmo com `-ExecutionPolicy Bypass`. Em vez disso, abra um PowerShell nesta
+pasta e **cole o bloco inteiro direto no terminal**:
 
-**1. Checagem diária** (atualiza `data.js` mesmo sem abrir o dashboard):
+```powershell
+$BaseDir = (Get-Location).Path
+$pythonw = (Get-Command pythonw.exe).Source
+$python = (Get-Command python.exe).Source
 
+$checkAction = "`"$python`" `"$BaseDir\check_status.py`""
+schtasks /Create /TN "ChamadosImpressoras_CheckStatus" /TR $checkAction /SC DAILY /ST 08:00 /F | Out-Null
+"OK: checagem diaria configurada (08:00)"
+
+$serverAction = "`"$pythonw`" `"$BaseDir\server.py`""
+schtasks /Create /TN "ChamadosImpressoras_Servidor" /TR $serverAction /SC ONLOGON /F 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    "OK: servidor configurado via Tarefa Agendada (inicia no login)"
+} else {
+    $startupDir = [Environment]::GetFolderPath('Startup')
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut("$startupDir\ChamadosImpressoras_Servidor.lnk")
+    $shortcut.TargetPath = $pythonw
+    $shortcut.Arguments = "`"$BaseDir\server.py`""
+    $shortcut.WorkingDirectory = $BaseDir
+    $shortcut.WindowStyle = 7
+    $shortcut.Save()
+    "OK: Tarefa Agendada bloqueada por politica - configurado via atalho na pasta Startup"
+}
+
+Start-Process $pythonw -ArgumentList "`"$BaseDir\server.py`""
+Start-Sleep -Seconds 2
+try {
+    Invoke-WebRequest -Uri "http://127.0.0.1:8743/" -UseBasicParsing -TimeoutSec 5 | Out-Null
+    "OK: servidor rodando em http://127.0.0.1:8743/"
+} catch {
+    "Aviso: nao consegui confirmar se o servidor subiu - rode 'python server.py' manualmente pra ver o erro"
+}
 ```
-schtasks /Create /TN "ChamadosImpressoras_CheckStatus" /TR "\"<caminho para o python.exe>\" \"<caminho para check_status.py>\"" /SC DAILY /ST 08:00
-```
 
-**2. Servidor local iniciando sozinho no login do Windows**, pro botão
-"Atualizar agora" já funcionar assim que você liga o PC. Se
-`schtasks /SC ONLOGON` for bloqueado por política de grupo da empresa (foi
-o nosso caso), a alternativa é um atalho na pasta Inicializar do Windows
-(`shell:startup`) apontando pro `pythonw.exe` (sem janela de terminal) com
-`server.py` como argumento.
+Depois de rodar isso uma vez, pode fechar o terminal (e o VS Code, se
+estiver usando) - o servidor continua rodando em segundo plano, e volta
+sozinho a cada login, sem precisar abrir nada de novo.
 
 ## Estrutura
 
