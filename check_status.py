@@ -40,7 +40,8 @@ def build_payload():
     errors = []
 
     try:
-        jira_rows = jira_client.fetch_tracked_tickets(config.JIRA_URL, config.JIRA_EMAIL, config.JIRA_TOKEN)
+        jira_rows, jira_warnings = jira_client.fetch_tracked_tickets(config.JIRA_URL, config.JIRA_EMAIL, config.JIRA_TOKEN)
+        errors.extend(jira_warnings)
     except Exception as e:
         jira_rows = []
         errors.append(f"Busca no Jira falhou: {e}")
