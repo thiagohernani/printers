@@ -13,9 +13,10 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
    **título** de cada chamado em aberto atribuído a você.
 2. Se o título seguir o padrão `motivo | Fornecedor | OS numero` (ex:
    `Impressora não liga | Simpress | OS 7127827`), ele extrai o fornecedor e
-   o número do ticket automaticamente. Também funciona sem o nome do
-   fornecedor explícito, inferindo pelo formato do número (Simpress = 7
-   dígitos começando com `7`; Selbetti = 8 dígitos começando com `14`).
+   o número do ticket automaticamente. O nome do fornecedor (`Simpress` ou
+   `Selbetti`, em qualquer parte do título) é **obrigatório** - se o título
+   tiver só o número da OS sem dizer o fornecedor, o ticket é ignorado e
+   aparece como aviso no dashboard, pedindo pra corrigir o título no Jira.
 3. Para cada ticket encontrado, consulta a API do fornecedor correspondente
    e pega o status atual.
 4. Gera `data.js`, que alimenta o `dashboard.html` — cartões coloridos por
