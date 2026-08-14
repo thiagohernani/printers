@@ -216,6 +216,13 @@
   .empty { text-align: center; color: var(--text-muted); padding: 70px 20px; font-size: 0.9rem; background: var(--surface); border: 1px dashed var(--border); border-radius: 14px; }
   .empty code { background: var(--muted-bg); padding: 2px 6px; border-radius: 5px; font-size: 0.85em; }
 
+  .stale-banner {
+    margin-bottom: 18px; padding: 12px 18px; border-radius: 12px;
+    background: var(--warning-bg); color: var(--warning); font-size: 0.83rem; font-weight: 600;
+    border: 1px solid color-mix(in srgb, var(--warning-ic) 35%, transparent);
+    display: flex; align-items: center; gap: 8px;
+  }
+
   .errors { margin-bottom: 18px; padding: 14px 18px; border-radius: 12px; background: var(--critical-bg); color: var(--critical); font-size: 0.83rem; border: 1px solid color-mix(in srgb, var(--critical) 30%, transparent); }
   .errors ul { margin: 6px 0 0; padding-left: 18px; }
   .errors li { margin: 2px 0; }
@@ -246,6 +253,8 @@
       <button class="refresh-btn" id="refreshBtn">Atualizar agora</button>
     </div>
   </div>
+
+  <div class="stale-banner" id="staleBanner" style="display:none;"></div>
 
   <div class="stats" id="stats"></div>
 
@@ -290,6 +299,27 @@
     const d = new Date(iso);
     if (isNaN(d)) return null;
     return Math.floor((Date.now() - d.getTime()) / 86400000);
+  }
+
+  function parseAtualizadoEm(str) {
+    const m = (str || "").match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
+    if (!m) return null;
+    const [, d, mo, y, h, mi, s] = m;
+    return new Date(+y, +mo - 1, +d, +h, +mi, +s);
+  }
+
+  const STALE_THRESHOLD_HORAS = 24;
+
+  function renderStaleBanner() {
+    const banner = document.getElementById("staleBanner");
+    const quando = parseAtualizadoEm(data.atualizado_em);
+    if (!quando) { banner.style.display = "none"; return; }
+    const horas = (Date.now() - quando.getTime()) / 3600000;
+    if (horas < STALE_THRESHOLD_HORAS) { banner.style.display = "none"; return; }
+    const dias = Math.floor(horas / 24);
+    const tempoTexto = dias >= 1 ? `${dias} dia${dias === 1 ? "" : "s"}` : `${Math.floor(horas)} horas`;
+    banner.style.display = "flex";
+    banner.textContent = `⚠ Os dados não são atualizados há ${tempoTexto} - o servidor ou o PC pode ter ficado desligado no horário agendado. Clique em "Atualizar agora" ou confira se o servidor está rodando.`;
   }
 
   function sortedTickets(list) {
@@ -419,6 +449,7 @@
 
   function renderAll() {
     document.getElementById("updated").textContent = "Atualizado em " + data.atualizado_em;
+    renderStaleBanner();
     renderStats();
     renderFilters();
     renderCards();
