@@ -25,7 +25,9 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
    cresce.
 4. Gera `data.js`, que alimenta o `dashboard.html` — cartões coloridos por
    situação (verde = resolvido, amarelo = em andamento, vermelho = atrasado),
-   com busca, filtros e link direto pro chamado no Jira.
+   com busca, filtros e link direto pro chamado no Jira. Um ticket também
+   vira **atrasado** automaticamente se passar de **30 dias sem resposta**
+   (resolvido ou cancelado), mesmo que o fornecedor não sinalize atraso.
 5. Chamados registrados manualmente em `tickets.csv` (colunas
    `fornecedor,numero_ticket,motivo`) também entram na lista, além dos que
    vêm do Jira - útil pra algo que não segue o padrão de título.
