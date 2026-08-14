@@ -15,7 +15,20 @@ CSV_PATH = os.path.join(BASE_DIR, "tickets.csv")
 DATA_JS_PATH = os.path.join(BASE_DIR, "data.js")
 
 
-def classify(status, sla_vencido=False):
+DIAS_SEM_RESPOSTA_ATRASA = 30
+
+
+def _dias_aberto(abertura):
+    if not abertura:
+        return None
+    try:
+        data_abertura = datetime.fromisoformat(abertura)
+    except ValueError:
+        return None
+    return (datetime.now() - data_abertura).days
+
+
+def classify(status, sla_vencido=False, abertura=None):
     s = (status or "").upper()
     if any(k in s for k in ["FINALIZ", "CONCLU", "ENCERRAD", "RESOLVID", "ENTREGUE"]):
         return "verde"
@@ -25,6 +38,9 @@ def classify(status, sla_vencido=False):
         return "vermelho"
     if s in ("", "NAO ENCONTRADO"):
         return "cinza"
+    dias = _dias_aberto(abertura)
+    if dias is not None and dias >= DIAS_SEM_RESPOSTA_ATRASA:
+        return "vermelho"
     return "amarelo"
 
 
@@ -131,7 +147,7 @@ def build_payload():
                     info = selbetti_client.get_ticket_status(token, field(r, "numero_ticket"))
                     info["chamado_interno"] = field(r, "chamado_interno")
                     info["motivo"] = field(r, "motivo")
-                    info["cor"] = classify(info["status"], info.get("sla_vencido"))
+                    info["cor"] = classify(info["status"], info.get("sla_vencido"), info.get("abertura"))
                     results.append(info)
                 except Exception as e:
                     errors.append(f"Selbetti #{field(r, 'numero_ticket')}: {e}")
@@ -146,7 +162,7 @@ def build_payload():
                         info = session.get_ticket_status(field(r, "numero_ticket"))
                         info["chamado_interno"] = field(r, "chamado_interno")
                         info["motivo"] = field(r, "motivo")
-                        info["cor"] = classify(info["status"], info.get("sla_vencido"))
+                        info["cor"] = classify(info["status"], info.get("sla_vencido"), info.get("abertura"))
                         results.append(info)
                     except Exception as e:
                         errors.append(f"Simpress #{field(r, 'numero_ticket')}: {e}")
