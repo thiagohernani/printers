@@ -41,7 +41,7 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
 ## Instalação
 
 ```
-pip install playwright
+pip install -r requirements.txt
 python -m playwright install chromium
 ```
 
