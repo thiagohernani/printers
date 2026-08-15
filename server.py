@@ -1,7 +1,6 @@
 import http.server
 import json
 import os
-import socketserver
 import sys
 import threading
 
@@ -65,5 +64,5 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
+    with http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as httpd:
         httpd.serve_forever()
