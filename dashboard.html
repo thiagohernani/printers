@@ -142,6 +142,18 @@
   }
   .toast .toast-close:hover { opacity: 1; }
 
+  .loading-bar {
+    position: fixed; top: 0; left: 0; height: 3px; width: 100%;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 50% 100%; background-repeat: no-repeat;
+    z-index: 2000; display: none;
+  }
+  .loading-bar.active { display: block; animation: loading-slide 1.1s ease-in-out infinite; }
+  @keyframes loading-slide {
+    0% { background-position: -50% 0; }
+    100% { background-position: 150% 0; }
+  }
+
   /* stat tiles */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat-tile {
@@ -283,6 +295,7 @@
 </style>
 </head>
 <body>
+<div class="loading-bar" id="loadingBar"></div>
 <div class="wrap">
   <div class="topbar">
     <div class="brand">
@@ -550,8 +563,10 @@
   }
 
   const refreshBtn = document.getElementById("refreshBtn");
+  const loadingBar = document.getElementById("loadingBar");
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled = true;
+    loadingBar.classList.add("active");
     toast("toast-refresh", "info", "Atualizando todos os tickets...");
     try {
       const resp = await fetch("/atualizar", { method: "POST" });
@@ -566,6 +581,7 @@
       toast("toast-refresh", "error", "Não consegui falar com o servidor local (server.py está rodando?).", 8000);
     } finally {
       refreshBtn.disabled = false;
+      loadingBar.classList.remove("active");
     }
   });
 
