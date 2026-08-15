@@ -127,6 +127,15 @@ def build_payload():
         prev = previous_tickets.get((fornecedor_key, _ticket_digits(numero_ticket)))
         prev_cor = prev.get("cor") if prev else None
         info["recem_resolvido"] = info["cor"] == "verde" and prev_cor is not None and prev_cor != "verde"
+        if not info["recem_resolvido"]:
+            return
+        chamado = info.get("chamado_interno", "")
+        if not re.match(r"^IS-\d+$", chamado):
+            return
+        try:
+            jira_client.close_ticket(config.JIRA_URL, config.JIRA_EMAIL, config.JIRA_TOKEN, chamado, info["status"])
+        except Exception as e:
+            errors.append(f"Nao consegui fechar {chamado} no Jira automaticamente: {e}")
 
     selbetti_to_check = []
     for r in selbetti_rows:

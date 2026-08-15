@@ -30,7 +30,15 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
    (resolvido ou cancelado), mesmo que o fornecedor não sinalize atraso.
    Quando um ticket muda de "em andamento/atrasado" para "resolvido" numa
    checagem, aparece um banner verde e um selo no card avisando - some na
-   checagem seguinte.
+   checagem seguinte. Nesse mesmo momento (só uma vez, na transição), o
+   chamado correspondente no Jira também é **fechado automaticamente**:
+   reaproveita os campos que já vêm preenchidos no próprio chamado
+   (Incident Type, IS Ubicación, responsável), define a Resolução como
+   "With technical intervention", preenche o campo Solution com o status
+   do fornecedor, e posta a mensagem padrão de encerramento como resposta
+   pública ao cliente. Tickets que já estavam marcados como resolvidos
+   antes dessa funcionalidade existir não são fechados retroativamente em
+   massa - só os que transicionarem daqui pra frente.
 5. Chamados registrados manualmente em `tickets.csv` (colunas
    `fornecedor,numero_ticket,motivo`) também entram na lista, além dos que
    vêm do Jira - útil pra algo que não segue o padrão de título.
