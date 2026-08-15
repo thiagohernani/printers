@@ -107,14 +107,15 @@
   .header-blobs {
     position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
     background:
-      radial-gradient(circle at 0%   35%, #FFE600 0%, transparent 60%),
-      radial-gradient(circle at 25%  65%, #FFC700 0%, transparent 58%),
-      radial-gradient(circle at 50%  30%, #FFB300 0%, transparent 60%),
-      radial-gradient(circle at 75%  65%, #FFC700 0%, transparent 58%),
-      radial-gradient(circle at 100% 35%, #FFE600 0%, transparent 60%);
-    background-size: 100% 100%;
-    filter: blur(50px);
-    opacity: 0.55;
+      radial-gradient(circle 130px at 2%  30%, #FFE600 0%, transparent 72%),
+      radial-gradient(circle 110px at 18% 70%, #FFC700 0%, transparent 72%),
+      radial-gradient(circle 125px at 36% 25%, #FFB300 0%, transparent 72%),
+      radial-gradient(circle 110px at 54% 68%, #FFC700 0%, transparent 72%),
+      radial-gradient(circle 125px at 72% 28%, #FFE600 0%, transparent 72%),
+      radial-gradient(circle 110px at 86% 66%, #FFC700 0%, transparent 72%),
+      radial-gradient(circle 130px at 98% 30%, #FFB300 0%, transparent 72%);
+    filter: blur(34px);
+    opacity: 0.65;
     animation: header-glow-drift 20s ease-in-out infinite;
   }
   @keyframes header-glow-drift {
