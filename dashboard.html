@@ -119,8 +119,28 @@
   .refresh-btn:hover:not(:disabled) { box-shadow: var(--shadow-hover); }
   .refresh-btn:active:not(:disabled) { transform: translateY(1px); }
   .refresh-btn:disabled { opacity: 0.55; cursor: default; }
-  .refresh-msg { font-size: 0.78rem; color: var(--text-muted); }
-  .refresh-msg.erro { color: var(--critical); font-weight: 600; }
+
+  .toast-container {
+    position: fixed; top: 20px; right: 20px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 10px; max-width: 340px;
+  }
+  .toast {
+    padding: 12px 14px; border-radius: 10px; font-size: 0.83rem; font-weight: 600;
+    box-shadow: var(--shadow-hover); border: 1px solid transparent;
+    display: flex; align-items: flex-start; gap: 8px; animation: toast-in 0.18s ease;
+  }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+  .toast-info    { background: var(--accent-bg);   color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .toast-success { background: var(--good-bg);     color: var(--good); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+  .toast-error   { background: var(--critical-bg); color: var(--critical); border-color: color-mix(in srgb, var(--critical) 30%, transparent); }
+  .toast .toast-icon { flex: none; font-size: 0.95rem; line-height: 1.3; }
+  .toast .toast-icon.spin { display: inline-block; animation: spin 0.9s linear infinite; }
+  .toast .toast-body { flex: 1; min-width: 0; font-weight: 500; }
+  .toast .toast-close {
+    flex: none; background: none; border: none; color: inherit; opacity: 0.55;
+    cursor: pointer; font-size: 0.95rem; line-height: 1; padding: 0;
+  }
+  .toast .toast-close:hover { opacity: 1; }
 
   /* stat tiles */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
@@ -273,10 +293,11 @@
       </div>
     </div>
     <div class="topbar-actions">
-      <span class="refresh-msg" id="refreshMsg"></span>
       <button class="refresh-btn" id="refreshBtn">Atualizar agora</button>
     </div>
   </div>
+
+  <div class="toast-container" id="toastContainer"></div>
 
   <div class="stale-banner" id="staleBanner" style="display:none;"></div>
   <div class="resolved-banner" id="resolvedBanner" style="display:none;"></div>
@@ -510,25 +531,41 @@
     renderTable();
   });
 
+  const toastContainer = document.getElementById("toastContainer");
+
+  function toast(id, type, message, autoHideMs) {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      toastContainer.appendChild(el);
+    }
+    const icons = { info: '<span class="toast-icon spin">↻</span>', success: '<span class="toast-icon">✓</span>', error: '<span class="toast-icon">⚠</span>' };
+    el.className = `toast toast-${type}`;
+    el.innerHTML = `${icons[type]}<span class="toast-body">${message}</span><button class="toast-close" title="Fechar">✕</button>`;
+    el.querySelector(".toast-close").addEventListener("click", () => el.remove());
+    clearTimeout(el._hideTimer);
+    if (autoHideMs) el._hideTimer = setTimeout(() => el.remove(), autoHideMs);
+    return el;
+  }
+
   const refreshBtn = document.getElementById("refreshBtn");
-  const refreshMsg = document.getElementById("refreshMsg");
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled = true;
-    refreshBtn.textContent = "Atualizando...";
-    refreshMsg.textContent = "";
-    refreshMsg.classList.remove("erro");
+    toast("toast-refresh", "info", "Atualizando todos os tickets...");
     try {
       const resp = await fetch("/atualizar", { method: "POST" });
       if (!resp.ok) throw new Error("resposta " + resp.status);
       data = await resp.json();
       renderAll();
-      refreshMsg.textContent = data.erros && data.erros.length ? "Atualizado com falhas - veja abaixo." : "Atualizado.";
+      const msg = data.erros && data.erros.length
+        ? `Atualizado com ${data.erros.length} falha(s) - veja abaixo.`
+        : "Todos os tickets foram atualizados.";
+      toast("toast-refresh", data.erros && data.erros.length ? "error" : "success", msg, 6000);
     } catch (e) {
-      refreshMsg.textContent = "Não consegui falar com o servidor local (server.py está rodando?).";
-      refreshMsg.classList.add("erro");
+      toast("toast-refresh", "error", "Não consegui falar com o servidor local (server.py está rodando?).", 8000);
     } finally {
       refreshBtn.disabled = false;
-      refreshBtn.textContent = "Atualizar agora";
     }
   });
 
@@ -541,9 +578,9 @@
     );
     if (!ticket) return;
 
+    const toastId = `toast-ticket-${btn.dataset.fornecedor}-${btn.dataset.numero}`;
     btn.disabled = true;
-    refreshMsg.textContent = `Verificando #${ticket.numero_ticket}...`;
-    refreshMsg.classList.remove("erro");
+    toast(toastId, "info", `Verificando #${ticket.numero_ticket}...`);
     try {
       const resp = await fetch("/atualizar-ticket", {
         method: "POST",
@@ -559,10 +596,10 @@
       if (!resp.ok) throw new Error(result.erro || ("resposta " + resp.status));
       data = result.payload;
       renderAll();
-      refreshMsg.textContent = `#${ticket.numero_ticket} verificado.`;
+      const meta = STATUS_META[result.ticket.cor] || STATUS_META.cinza;
+      toast(toastId, "success", `#${ticket.numero_ticket} verificado: <b>${result.ticket.status}</b> (${meta.label})`, 7000);
     } catch (err) {
-      refreshMsg.textContent = `Não consegui verificar #${ticket.numero_ticket} (servidor local rodando?).`;
-      refreshMsg.classList.add("erro");
+      toast(toastId, "error", `Não consegui verificar #${ticket.numero_ticket} (servidor local rodando?).`, 8000);
       btn.disabled = false;
     }
   });
