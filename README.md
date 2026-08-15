@@ -28,6 +28,9 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
    com busca, filtros e link direto pro chamado no Jira. Um ticket também
    vira **atrasado** automaticamente se passar de **30 dias sem resposta**
    (resolvido ou cancelado), mesmo que o fornecedor não sinalize atraso.
+   Quando um ticket muda de "em andamento/atrasado" para "resolvido" numa
+   checagem, aparece um banner verde e um selo no card avisando - some na
+   checagem seguinte.
 5. Chamados registrados manualmente em `tickets.csv` (colunas
    `fornecedor,numero_ticket,motivo`) também entram na lista, além dos que
    vêm do Jira - útil pra algo que não segue o padrão de título.
