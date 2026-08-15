@@ -195,6 +195,17 @@
   .badge.cinza     { background: var(--muted-bg);     color: var(--text-muted); }
   .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
 
+  .card-top-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .check-one-btn {
+    width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-muted); font-size: 0.85rem; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .check-one-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+  .check-one-btn:disabled { opacity: 0.6; cursor: default; animation: spin 0.8s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
   .motivo { font-size: 0.88rem; color: var(--text-1); font-weight: 500; line-height: 1.35; }
 
   .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 10px 0; border-top: 1px solid var(--gridline); }
@@ -422,7 +433,10 @@
               <div class="ticket-no">#${t.numero_ticket}</div>
               ${t.recem_resolvido ? `<div class="just-resolved-tag">🎉 Resolvido nesta checagem</div>` : ""}
             </div>
-            <span class="badge ${t.cor}"><span class="dot"></span>${meta.label}</span>
+            <div class="card-top-actions">
+              <span class="badge ${t.cor}"><span class="dot"></span>${meta.label}</span>
+              <button class="check-one-btn" data-fornecedor="${fCls}" data-numero="${String(t.numero_ticket)}" title="Verificar só este ticket agora">↻</button>
+            </div>
           </div>
           <div class="motivo">${t.motivo || t.descricao || "Sem descrição"}</div>
           <div class="meta-grid">
@@ -515,6 +529,41 @@
     } finally {
       refreshBtn.disabled = false;
       refreshBtn.textContent = "Atualizar agora";
+    }
+  });
+
+  document.getElementById("cardsView").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".check-one-btn");
+    if (!btn) return;
+    const ticket = data.tickets.find(t =>
+      (t.fornecedor || "").toLowerCase() === btn.dataset.fornecedor &&
+      String(t.numero_ticket) === btn.dataset.numero
+    );
+    if (!ticket) return;
+
+    btn.disabled = true;
+    refreshMsg.textContent = `Verificando #${ticket.numero_ticket}...`;
+    refreshMsg.classList.remove("erro");
+    try {
+      const resp = await fetch("/atualizar-ticket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fornecedor: ticket.fornecedor,
+          numero_ticket: ticket.numero_ticket,
+          chamado_interno: ticket.chamado_interno || "",
+          motivo: ticket.motivo || "",
+        }),
+      });
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.erro || ("resposta " + resp.status));
+      data = result.payload;
+      renderAll();
+      refreshMsg.textContent = `#${ticket.numero_ticket} verificado.`;
+    } catch (err) {
+      refreshMsg.textContent = `Não consegui verificar #${ticket.numero_ticket} (servidor local rodando?).`;
+      refreshMsg.classList.add("erro");
+      btn.disabled = false;
     }
   });
 

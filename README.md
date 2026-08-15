@@ -97,6 +97,10 @@ abrir terminal), rode o servidor local:
 python server.py
 ```
 
+Cada card também tem um botão pequeno (↻) pra verificar **só aquele
+ticket**, sem precisar rodar a checagem inteira - útil quando você já sabe
+qual chamado quer conferir na hora.
+
 E acesse **http://127.0.0.1:8743/** no navegador (em vez de abrir o
 arquivo direto).
 

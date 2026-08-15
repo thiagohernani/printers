@@ -57,24 +57,45 @@ def _ticket_digits(numero):
     return re.sub(r"\D", "", str(numero or ""))
 
 
-def load_previous_tickets():
-    """Estado da ultima checagem, indexado por (fornecedor, numero) - usado tanto
-    para pular tickets ja resolvidos quanto para detectar quando um ticket acabou
-    de mudar de status."""
+def load_data_payload():
+    """Conteudo atual do data.js (ultima checagem, completa ou pontual)."""
     if not os.path.exists(DATA_JS_PATH):
-        return {}
+        return {"atualizado_em": "-", "tickets": [], "erros": [], "reaproveitados_do_cache": 0}
     try:
         with open(DATA_JS_PATH, encoding="utf-8") as f:
             content = f.read()
         json_part = content[len("const TICKETS_DATA = "):].strip().rstrip(";")
-        payload = json.loads(json_part)
+        return json.loads(json_part)
     except Exception:
-        return {}
+        return {"atualizado_em": "-", "tickets": [], "erros": [], "reaproveitados_do_cache": 0}
+
+
+def load_previous_tickets():
+    """Estado da ultima checagem, indexado por (fornecedor, numero) - usado tanto
+    para pular tickets ja resolvidos quanto para detectar quando um ticket acabou
+    de mudar de status."""
     previous = {}
-    for t in payload.get("tickets", []):
+    for t in load_data_payload().get("tickets", []):
         key = (str(t.get("fornecedor", "")).lower(), _ticket_digits(t.get("numero_ticket")))
         previous[key] = t
     return previous
+
+
+def resolve_and_maybe_close(info, fornecedor_key, numero_ticket, previous_tickets, errors):
+    """Marca o ticket como recem-resolvido se ele acabou de mudar de status
+    nesta checagem e, nesse caso, fecha o chamado correspondente no Jira."""
+    prev = previous_tickets.get((fornecedor_key, _ticket_digits(numero_ticket)))
+    prev_cor = prev.get("cor") if prev else None
+    info["recem_resolvido"] = info["cor"] == "verde" and prev_cor is not None and prev_cor != "verde"
+    if not info["recem_resolvido"]:
+        return
+    chamado = info.get("chamado_interno", "")
+    if not re.match(r"^IS-\d+$", chamado):
+        return
+    try:
+        jira_client.close_ticket(config.JIRA_URL, config.JIRA_EMAIL, config.JIRA_TOKEN, chamado, info["status"])
+    except Exception as e:
+        errors.append(f"Nao consegui fechar {chamado} no Jira automaticamente: {e}")
 
 
 def build_payload():
@@ -123,20 +144,6 @@ def build_payload():
         info["recem_resolvido"] = False
         return info
 
-    def marcar_se_recem_resolvido(info, fornecedor_key, numero_ticket):
-        prev = previous_tickets.get((fornecedor_key, _ticket_digits(numero_ticket)))
-        prev_cor = prev.get("cor") if prev else None
-        info["recem_resolvido"] = info["cor"] == "verde" and prev_cor is not None and prev_cor != "verde"
-        if not info["recem_resolvido"]:
-            return
-        chamado = info.get("chamado_interno", "")
-        if not re.match(r"^IS-\d+$", chamado):
-            return
-        try:
-            jira_client.close_ticket(config.JIRA_URL, config.JIRA_EMAIL, config.JIRA_TOKEN, chamado, info["status"])
-        except Exception as e:
-            errors.append(f"Nao consegui fechar {chamado} no Jira automaticamente: {e}")
-
     selbetti_to_check = []
     for r in selbetti_rows:
         cached = cached_result(r, "selbetti")
@@ -164,7 +171,7 @@ def build_payload():
                     info["chamado_interno"] = field(r, "chamado_interno")
                     info["motivo"] = field(r, "motivo")
                     info["cor"] = classify(info["status"], info.get("sla_vencido"), info.get("abertura"))
-                    marcar_se_recem_resolvido(info, "selbetti", field(r, "numero_ticket"))
+                    resolve_and_maybe_close(info, "selbetti", field(r, "numero_ticket"), previous_tickets, errors)
                     results.append(info)
                 except Exception as e:
                     errors.append(f"Selbetti #{field(r, 'numero_ticket')}: {e}")
@@ -180,7 +187,7 @@ def build_payload():
                         info["chamado_interno"] = field(r, "chamado_interno")
                         info["motivo"] = field(r, "motivo")
                         info["cor"] = classify(info["status"], info.get("sla_vencido"), info.get("abertura"))
-                        marcar_se_recem_resolvido(info, "simpress", field(r, "numero_ticket"))
+                        resolve_and_maybe_close(info, "simpress", field(r, "numero_ticket"), previous_tickets, errors)
                         results.append(info)
                     except Exception as e:
                         errors.append(f"Simpress #{field(r, 'numero_ticket')}: {e}")
@@ -200,6 +207,54 @@ def write_data_js(payload):
         f.write("const TICKETS_DATA = ")
         json.dump(payload, f, ensure_ascii=False, indent=2)
         f.write(";\n")
+
+
+def _numero_para_consulta(numero_ticket, fornecedor_key):
+    """O numero_ticket exibido no dashboard pode vir com prefixo (ex: 'OS 7127827'
+    para Simpress) - as APIs dos fornecedores querem so o numero/codigo puro,
+    exceto tickets Simpress no formato CS0XXXXXX, que devem ser mantidos como estao."""
+    s = str(numero_ticket).strip()
+    if fornecedor_key == "simpress" and not s.upper().startswith("CS"):
+        return re.sub(r"\D", "", s)
+    return s
+
+
+def check_single_ticket(fornecedor, numero_ticket, chamado_interno="", motivo=""):
+    """Consulta um unico ticket (sem mexer nos outros) e grava o resultado
+    no data.js no lugar da entrada antiga. Retorna (info_do_ticket, payload_completo)."""
+    fornecedor_key = fornecedor.strip().lower()
+    previous_tickets = load_previous_tickets()
+    errors = []
+    numero_consulta = _numero_para_consulta(numero_ticket, fornecedor_key)
+
+    if fornecedor_key == "selbetti":
+        token = selbetti_client.login(config.SELBETTI_USER, config.SELBETTI_PASS)
+        info = selbetti_client.get_ticket_status(token, numero_consulta)
+    elif fornecedor_key == "simpress":
+        with SimpressSession(config.SIMPRESS_USER, config.SIMPRESS_PASS) as session:
+            info = session.get_ticket_status(numero_consulta)
+    else:
+        raise ValueError(f"Fornecedor desconhecido: {fornecedor}")
+
+    info["chamado_interno"] = chamado_interno
+    info["motivo"] = motivo
+    info["cor"] = classify(info["status"], info.get("sla_vencido"), info.get("abertura"))
+    resolve_and_maybe_close(info, fornecedor_key, numero_ticket, previous_tickets, errors)
+
+    payload = load_data_payload()
+    tickets = payload.get("tickets", [])
+    key = (fornecedor_key, _ticket_digits(numero_ticket))
+    for i, t in enumerate(tickets):
+        if (str(t.get("fornecedor", "")).lower(), _ticket_digits(t.get("numero_ticket"))) == key:
+            tickets[i] = info
+            break
+    else:
+        tickets.append(info)
+    payload["tickets"] = tickets
+    if errors:
+        payload["erros"] = payload.get("erros", []) + errors
+    write_data_js(payload)
+    return info, payload
 
 
 def main():

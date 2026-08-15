@@ -23,27 +23,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.path = "/dashboard.html"
         super().do_GET()
 
+    def _send_json(self, status, data):
+        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
-        if self.path != "/atualizar":
-            self.send_error(404)
+        if self.path == "/atualizar":
+            with _lock:
+                try:
+                    payload = check_status.build_payload()
+                    check_status.write_data_js(payload)
+                    self._send_json(200, payload)
+                except Exception as e:
+                    self._send_json(500, {"erro": str(e)})
             return
-        with _lock:
-            try:
-                payload = check_status.build_payload()
-                check_status.write_data_js(payload)
-                body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-            except Exception as e:
-                body = json.dumps({"erro": str(e)}, ensure_ascii=False).encode("utf-8")
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
+
+        if self.path == "/atualizar-ticket":
+            with _lock:
+                try:
+                    length = int(self.headers.get("Content-Length", 0))
+                    req = json.loads(self.rfile.read(length) or b"{}")
+                    info, payload = check_status.check_single_ticket(
+                        req["fornecedor"],
+                        req["numero_ticket"],
+                        req.get("chamado_interno", ""),
+                        req.get("motivo", ""),
+                    )
+                    self._send_json(200, {"ticket": info, "payload": payload})
+                except Exception as e:
+                    self._send_json(500, {"erro": str(e)})
+            return
+
+        self.send_error(404)
 
     def log_message(self, format, *args):
         pass
