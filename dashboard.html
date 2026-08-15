@@ -102,18 +102,26 @@
     overflow: hidden; isolation: isolate;
   }
   .header-blobs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-  .header-blob { position: absolute; border-radius: 50%; filter: blur(46px); will-change: transform; }
+  .header-blob { position: absolute; border-radius: 50%; filter: blur(52px); will-change: transform; }
   .header-blob-1 {
-    width: 220px; height: 220px; top: -90px; left: 8%; opacity: 0.40;
+    width: 260px; height: 260px; top: -115px; left: -8%; opacity: 0.42;
     background: #FFE600; animation: blob-float-1 15s ease-in-out infinite;
   }
   .header-blob-2 {
-    width: 190px; height: 190px; top: -70px; left: 48%; opacity: 0.32;
+    width: 220px; height: 220px; top: -95px; left: 20%; opacity: 0.32;
     background: #FFC700; animation: blob-float-2 19s ease-in-out infinite;
   }
   .header-blob-3 {
-    width: 160px; height: 160px; top: -60px; left: 78%; opacity: 0.30;
+    width: 240px; height: 240px; top: -105px; left: 46%; opacity: 0.34;
     background: #FFB300; animation: blob-float-3 17s ease-in-out infinite;
+  }
+  .header-blob-4 {
+    width: 220px; height: 220px; top: -90px; left: 70%; opacity: 0.32;
+    background: #FFC700; animation: blob-float-1 21s ease-in-out infinite reverse;
+  }
+  .header-blob-5 {
+    width: 250px; height: 250px; top: -110px; left: 92%; opacity: 0.40;
+    background: #FFE600; animation: blob-float-2 16s ease-in-out infinite;
   }
   @keyframes blob-float-1 {
     0%, 100% { transform: translate(0, 0) scale(1); }
@@ -341,6 +349,8 @@
       <div class="header-blob header-blob-1"></div>
       <div class="header-blob header-blob-2"></div>
       <div class="header-blob header-blob-3"></div>
+      <div class="header-blob header-blob-4"></div>
+      <div class="header-blob header-blob-5"></div>
     </div>
     <div class="brand">
       <div class="brand-mark">P</div>
