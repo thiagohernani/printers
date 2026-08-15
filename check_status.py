@@ -57,9 +57,10 @@ def _ticket_digits(numero):
     return re.sub(r"\D", "", str(numero or ""))
 
 
-def load_resolved_cache():
-    """Tickets ja confirmados como resolvidos na ultima checagem - nao precisam
-    ser consultados de novo, ja que dificilmente um chamado reabre."""
+def load_previous_tickets():
+    """Estado da ultima checagem, indexado por (fornecedor, numero) - usado tanto
+    para pular tickets ja resolvidos quanto para detectar quando um ticket acabou
+    de mudar de status."""
     if not os.path.exists(DATA_JS_PATH):
         return {}
     try:
@@ -69,17 +70,17 @@ def load_resolved_cache():
         payload = json.loads(json_part)
     except Exception:
         return {}
-    cache = {}
+    previous = {}
     for t in payload.get("tickets", []):
-        if t.get("cor") == "verde":
-            key = (str(t.get("fornecedor", "")).lower(), _ticket_digits(t.get("numero_ticket")))
-            cache[key] = t
-    return cache
+        key = (str(t.get("fornecedor", "")).lower(), _ticket_digits(t.get("numero_ticket")))
+        previous[key] = t
+    return previous
 
 
 def build_payload():
     errors = []
-    resolved_cache = load_resolved_cache()
+    previous_tickets = load_previous_tickets()
+    resolved_cache = {k: t for k, t in previous_tickets.items() if t.get("cor") == "verde"}
 
     try:
         jira_rows, jira_warnings = jira_client.fetch_tracked_tickets(config.JIRA_URL, config.JIRA_EMAIL, config.JIRA_TOKEN)
@@ -119,7 +120,13 @@ def build_payload():
         info = dict(cached)
         info["chamado_interno"] = field(r, "chamado_interno")
         info["motivo"] = field(r, "motivo") or info.get("motivo", "")
+        info["recem_resolvido"] = False
         return info
+
+    def marcar_se_recem_resolvido(info, fornecedor_key, numero_ticket):
+        prev = previous_tickets.get((fornecedor_key, _ticket_digits(numero_ticket)))
+        prev_cor = prev.get("cor") if prev else None
+        info["recem_resolvido"] = info["cor"] == "verde" and prev_cor is not None and prev_cor != "verde"
 
     selbetti_to_check = []
     for r in selbetti_rows:
@@ -148,6 +155,7 @@ def build_payload():
                     info["chamado_interno"] = field(r, "chamado_interno")
                     info["motivo"] = field(r, "motivo")
                     info["cor"] = classify(info["status"], info.get("sla_vencido"), info.get("abertura"))
+                    marcar_se_recem_resolvido(info, "selbetti", field(r, "numero_ticket"))
                     results.append(info)
                 except Exception as e:
                     errors.append(f"Selbetti #{field(r, 'numero_ticket')}: {e}")
@@ -163,6 +171,7 @@ def build_payload():
                         info["chamado_interno"] = field(r, "chamado_interno")
                         info["motivo"] = field(r, "motivo")
                         info["cor"] = classify(info["status"], info.get("sla_vencido"), info.get("abertura"))
+                        marcar_se_recem_resolvido(info, "simpress", field(r, "numero_ticket"))
                         results.append(info)
                     except Exception as e:
                         errors.append(f"Simpress #{field(r, 'numero_ticket')}: {e}")

@@ -223,6 +223,19 @@
     display: flex; align-items: center; gap: 8px;
   }
 
+  .resolved-banner {
+    margin-bottom: 18px; padding: 12px 18px; border-radius: 12px;
+    background: var(--good-bg); color: var(--good); font-size: 0.83rem; font-weight: 600;
+    border: 1px solid color-mix(in srgb, var(--good) 35%, transparent);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .card.recem-resolvido { box-shadow: 0 0 0 2px var(--good), var(--shadow); }
+  .just-resolved-tag {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700;
+    color: var(--good); background: var(--good-bg); padding: 2px 8px; border-radius: 999px; margin-top: 4px;
+  }
+
   .errors { margin-bottom: 18px; padding: 14px 18px; border-radius: 12px; background: var(--critical-bg); color: var(--critical); font-size: 0.83rem; border: 1px solid color-mix(in srgb, var(--critical) 30%, transparent); }
   .errors ul { margin: 6px 0 0; padding-left: 18px; }
   .errors li { margin: 2px 0; }
@@ -255,6 +268,7 @@
   </div>
 
   <div class="stale-banner" id="staleBanner" style="display:none;"></div>
+  <div class="resolved-banner" id="resolvedBanner" style="display:none;"></div>
 
   <div class="stats" id="stats"></div>
 
@@ -320,6 +334,15 @@
     const tempoTexto = dias >= 1 ? `${dias} dia${dias === 1 ? "" : "s"}` : `${Math.floor(horas)} horas`;
     banner.style.display = "flex";
     banner.textContent = `⚠ Os dados não são atualizados há ${tempoTexto} - o servidor ou o PC pode ter ficado desligado no horário agendado. Clique em "Atualizar agora" ou confira se o servidor está rodando.`;
+  }
+
+  function renderResolvedBanner() {
+    const banner = document.getElementById("resolvedBanner");
+    const recentes = data.tickets.filter(t => t.recem_resolvido);
+    if (!recentes.length) { banner.style.display = "none"; return; }
+    banner.style.display = "flex";
+    const lista = recentes.map(t => `#${t.numero_ticket}`).join(", ");
+    banner.textContent = `🎉 ${recentes.length} ticket(s) foram resolvidos nesta checagem: ${lista}`;
   }
 
   function sortedTickets(list) {
@@ -392,11 +415,12 @@
         : "-";
       const fCls = (t.fornecedor || "").toLowerCase();
       return `
-        <div class="card ${t.cor}">
+        <div class="card ${t.cor} ${t.recem_resolvido ? "recem-resolvido" : ""}">
           <div class="card-top">
             <div>
               <div class="fornecedor-row"><span class="fornecedor-dot ${fCls}"></span><span class="fornecedor ${fCls}">${t.fornecedor}</span></div>
               <div class="ticket-no">#${t.numero_ticket}</div>
+              ${t.recem_resolvido ? `<div class="just-resolved-tag">🎉 Resolvido nesta checagem</div>` : ""}
             </div>
             <span class="badge ${t.cor}"><span class="dot"></span>${meta.label}</span>
           </div>
@@ -450,6 +474,7 @@
   function renderAll() {
     document.getElementById("updated").textContent = "Atualizado em " + data.atualizado_em;
     renderStaleBanner();
+    renderResolvedBanner();
     renderStats();
     renderFilters();
     renderCards();
