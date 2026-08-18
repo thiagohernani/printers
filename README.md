@@ -172,3 +172,7 @@ sozinho a cada login, sem precisar abrir nada de novo.
 | `dashboard.html` | Interface visual |
 | `tickets.csv` | Tickets adicionados manualmente (opcional, além do Jira) |
 | `config.py` | Carrega as credenciais do `.env` |
+
+## Autor
+
+Desenvolvido por **Thiago Hernani Dos Santos**.
