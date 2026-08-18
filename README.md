@@ -30,16 +30,19 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
    (resolvido ou cancelado), mesmo que o fornecedor não sinalize atraso.
    Quando um ticket muda de "em andamento/atrasado" para "resolvido" numa
    checagem, aparece um banner verde e um selo no card avisando - some na
-   checagem seguinte. Nesse mesmo momento (só uma vez, na transição), o
-   chamado correspondente no Jira também é **fechado automaticamente**:
-   reaproveita os campos que já vêm preenchidos no próprio chamado
-   (Incident Type, IS Ubicación, responsável), define a Resolução como
-   "With technical intervention", preenche o campo Solution com o status
-   do fornecedor, e posta a mensagem padrão de encerramento como resposta
-   pública ao cliente. Tickets que já estavam marcados como resolvidos
-   antes dessa funcionalidade existir não são fechados retroativamente em
-   massa - só os que transicionarem daqui pra frente.
-5. Chamados registrados manualmente em `tickets.csv` (colunas
+   checagem seguinte.
+5. Fechar o chamado no Jira é uma ação **manual**, feita pelo botão
+   **"Fechar no Jira"** que aparece nos cards já resolvidos - não acontece
+   sozinho durante a checagem. Isso é de propósito: o fornecedor às vezes
+   marca um ticket como resolvido sem o problema ter sido realmente
+   corrigido, e fechar automaticamente nesses casos geraria conflito com o
+   chamado no Jira. Ao clicar, o script reaproveita os campos que já vêm
+   preenchidos no próprio chamado (Incident Type, IS Ubicación,
+   responsável), define a Resolução como "With technical intervention",
+   preenche o campo Solution com o status do fornecedor, e posta a
+   mensagem padrão de encerramento como resposta pública ao cliente. O
+   card mostra "✓ Fechado no Jira" depois de fechado.
+6. Chamados registrados manualmente em `tickets.csv` (colunas
    `fornecedor,numero_ticket,motivo`) também entram na lista, além dos que
    vêm do Jira - útil pra algo que não segue o padrão de título.
 

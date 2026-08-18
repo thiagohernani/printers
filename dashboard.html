@@ -313,6 +313,17 @@
     color: var(--good); background: var(--good-bg); padding: 2px 8px; border-radius: 999px; margin-top: 4px;
   }
 
+  .close-jira-btn {
+    margin-top: 10px; width: 100%; font: inherit; font-size: 0.78rem; font-weight: 700;
+    padding: 7px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--good) 40%, transparent);
+    background: var(--good-bg); color: var(--good); cursor: pointer; transition: opacity 0.15s ease;
+  }
+  .close-jira-btn:hover:not(:disabled) { opacity: 0.8; }
+  .close-jira-btn:disabled { opacity: 0.5; cursor: default; }
+  .jira-closed-tag {
+    margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-align: center;
+  }
+
   .errors { margin-bottom: 18px; padding: 14px 18px; border-radius: 12px; background: var(--critical-bg); color: var(--critical); font-size: 0.83rem; border: 1px solid color-mix(in srgb, var(--critical) 30%, transparent); }
   .errors ul { margin: 6px 0 0; padding-left: 18px; }
   .errors li { margin: 2px 0; }
@@ -519,6 +530,11 @@
             <span class="chamado-interno">${interno}</span>
             ${days !== null ? `<span class="days-pill ${t.cor === "vermelho" ? "vermelho" : ""}">${days} dia${days === 1 ? "" : "s"}</span>` : ""}
           </div>
+          ${t.cor === "verde" && /^IS-\d+$/.test(t.chamado_interno || "")
+            ? (t.fechado_no_jira
+                ? `<div class="jira-closed-tag">✓ Fechado no Jira</div>`
+                : `<button class="close-jira-btn" data-fornecedor="${fCls}" data-numero="${String(t.numero_ticket)}">Fechar no Jira</button>`)
+            : ""}
         </div>`;
     }).join("");
   }
@@ -654,6 +670,44 @@
     } catch (err) {
       toast(toastId, "error", `Não consegui verificar #${ticket.numero_ticket} (servidor local rodando?).`, 8000);
       btn.disabled = false;
+    }
+  });
+
+  document.getElementById("cardsView").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".close-jira-btn");
+    if (!btn) return;
+    const ticket = data.tickets.find(t =>
+      (t.fornecedor || "").toLowerCase() === btn.dataset.fornecedor &&
+      String(t.numero_ticket) === btn.dataset.numero
+    );
+    if (!ticket) return;
+
+    const toastId = `toast-close-${btn.dataset.fornecedor}-${btn.dataset.numero}`;
+    btn.disabled = true;
+    btn.textContent = "Fechando...";
+    toast(toastId, "info", `Fechando ${ticket.chamado_interno} no Jira...`);
+    try {
+      const resp = await fetch("/fechar-ticket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fornecedor: ticket.fornecedor,
+          numero_ticket: ticket.numero_ticket,
+          chamado_interno: ticket.chamado_interno || "",
+          status: ticket.status || "",
+        }),
+      });
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.erro || ("resposta " + resp.status));
+      data = result.payload;
+      renderAll();
+      toast(toastId, result.fechado ? "success" : "error",
+        result.fechado ? `${ticket.chamado_interno} fechado no Jira.` : `${ticket.chamado_interno} já estava fechado ou sem transição disponível.`,
+        7000);
+    } catch (err) {
+      toast(toastId, "error", `Não consegui fechar ${ticket.chamado_interno} no Jira (servidor local rodando?).`, 8000);
+      btn.disabled = false;
+      btn.textContent = "Fechar no Jira";
     }
   });
 

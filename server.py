@@ -57,6 +57,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self._send_json(500, {"erro": str(e)})
             return
 
+        if self.path == "/fechar-ticket":
+            with _lock:
+                try:
+                    length = int(self.headers.get("Content-Length", 0))
+                    req = json.loads(self.rfile.read(length) or b"{}")
+                    fechou = check_status.close_ticket_in_jira(req["chamado_interno"], req.get("status", ""))
+                    payload = (
+                        check_status.mark_ticket_fechado_no_jira(req["fornecedor"], req["numero_ticket"])
+                        if fechou else check_status.load_data_payload()
+                    )
+                    self._send_json(200, {"fechado": fechou, "payload": payload})
+                except Exception as e:
+                    self._send_json(500, {"erro": str(e)})
+            return
+
         self.send_error(404)
 
     def log_message(self, format, *args):
