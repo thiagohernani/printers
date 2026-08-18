@@ -17,6 +17,10 @@ ver o status e atualizar o chamado do Jira à mão. Com isso, é um clique.
    `Selbetti`, em qualquer parte do título) é **obrigatório** - se o título
    tiver só o número da OS sem dizer o fornecedor, o ticket é ignorado e
    aparece como aviso no dashboard, pedindo pra corrigir o título no Jira.
+   Se dois chamados diferentes (do Jira, ou um deles vindo do
+   `tickets.csv`) apontarem pro **mesmo número de ticket** do fornecedor,
+   isso também vira um aviso na caixa de erros - só o primeiro é
+   consultado, o segundo é sinalizado como possível duplicidade.
 3. Para cada ticket encontrado, consulta a API do fornecedor correspondente
    e pega o status atual - exceto os que já apareceram como **resolvidos**
    numa checagem anterior, que não são consultados de novo (ficam salvos em

@@ -125,13 +125,20 @@ def build_payload():
     csv_rows = load_tickets(CSV_PATH)
     csv_rows = [r for r in csv_rows if field(r, "numero_ticket")]
 
-    seen = set()
+    seen = {}
     rows = []
     for r in jira_rows + csv_rows:
-        key = (field(r, "fornecedor").lower(), field(r, "numero_ticket"))
+        key = (field(r, "fornecedor").lower(), _ticket_digits(field(r, "numero_ticket")))
         if key in seen:
+            primeiro = field(seen[key], "chamado_interno") or "entrada manual em tickets.csv"
+            duplicado = field(r, "chamado_interno") or "entrada manual em tickets.csv"
+            errors.append(
+                f"Ticket duplicado: {duplicado} aponta pro mesmo numero "
+                f"({field(r, 'fornecedor')} #{field(r, 'numero_ticket')}) que {primeiro} - "
+                f"verifique se e duplicidade no Jira"
+            )
             continue
-        seen.add(key)
+        seen[key] = r
         rows.append(r)
 
     results = []
