@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PrintWatch</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖨️</text></svg>">
+<script>
+  (function () {
+    var saved = localStorage.getItem("printwatch-theme");
+    if (saved === "light" || saved === "dark") {
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+  })();
+</script>
 <style>
   :root {
     color-scheme: light;
@@ -145,6 +153,15 @@
   .refresh-btn:hover:not(:disabled) { box-shadow: var(--shadow-hover); }
   .refresh-btn:active:not(:disabled) { transform: translateY(1px); }
   .refresh-btn:disabled { opacity: 0.55; cursor: default; }
+
+  .theme-toggle-btn {
+    width: 38px; height: 38px; border-radius: 9px; flex: none;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-1);
+    font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow); transition: box-shadow 0.15s ease, transform 0.08s ease;
+  }
+  .theme-toggle-btn:hover { box-shadow: var(--shadow-hover); }
+  .theme-toggle-btn:active { transform: translateY(1px); }
 
   .toast-container {
     position: fixed; top: 20px; right: 20px; z-index: 1000;
@@ -357,6 +374,7 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <button class="theme-toggle-btn" id="themeToggleBtn" title="Alternar tema claro/escuro">🌙</button>
         <button class="refresh-btn" id="refreshBtn">Atualizar agora</button>
       </div>
     </div>
@@ -716,6 +734,23 @@
       btn.textContent = "Fechar no Jira";
     }
   });
+
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
+  function effectiveTheme() {
+    const forced = document.documentElement.getAttribute("data-theme");
+    if (forced) return forced;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function updateThemeIcon() {
+    themeToggleBtn.textContent = effectiveTheme() === "dark" ? "☀️" : "🌙";
+  }
+  themeToggleBtn.addEventListener("click", () => {
+    const next = effectiveTheme() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("printwatch-theme", next);
+    updateThemeIcon();
+  });
+  updateThemeIcon();
 
   renderAll();
 </script>
