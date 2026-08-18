@@ -22,6 +22,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.path = "/dashboard.html"
         super().do_GET()
 
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, must-revalidate")
+        super().end_headers()
+
     def _send_json(self, status, data):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
